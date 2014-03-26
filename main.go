@@ -9,8 +9,9 @@ import (
 )
 
 func main() {
+	args := append([]string{"test"}, os.Args[1:]...)
 
-	cmd := exec.Command("go", "test", "./...")
+	cmd := exec.Command("go", args...)
 	p, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error getting StdoutPipe from command: %v", err)
