@@ -71,6 +71,8 @@ func main() {
 		testFlags = append(testFlags, "-test.v=true")
 	}
 	if nlArgs.gocheck != "" {
+		testFlags = append(testFlags, "-test.v=true")
+		// FIXME (perrito666) This is not working as expected, perhaps quoting
 		testFlags = append(testFlags, fmt.Sprintf("-gocheck.f=%q", nlArgs.gocheck))
 	}
 	args = append(testFlags, args...)
@@ -144,7 +146,12 @@ func tokenize(s string) string {
 				tokenized = append(tokenized, c)
 			}
 		default:
-			tokenized = append(tokenized, c)
+			if inStr {
+				tokenized = append(tokenized, strSP(c))
+			} else {
+				tokenized = append(tokenized, c)
+			}
+
 		}
 	}
 	return strings.Join(tokenized, "")
@@ -158,6 +165,9 @@ func colorizeOut(c chan string, wg *sync.WaitGroup) {
 			return
 		}
 		var out string
+		// TODO(perrito666) do the same for the other expected values
+		// in a log line: timestamp, loglevel and package
+		// [LOG] 0:00.003 INFO a.package
 		if strings.HasPrefix(s, "[LOG]") {
 			out = logHeading()
 			s = s[5:]
