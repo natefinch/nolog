@@ -13,6 +13,9 @@ import (
 	termcolor "github.com/fatih/color"
 )
 
+// Expected log line output
+// [LOG] 0:00.003 INFO a.package body
+
 // TODO: Perhaps error deserves a better coloring
 var (
 	errColorP      = termcolor.New(termcolor.FgGreen).Add(termcolor.Underline).PrintlnFunc()
@@ -215,9 +218,6 @@ func colorizeOut(c chan string, wg *sync.WaitGroup) {
 			return
 		}
 		var out string
-		// TODO(perrito666) do the same for the other expected values
-		// in a log line: timestamp, loglevel and package
-		// [LOG] 0:00.003 INFO a.package
 		if strings.HasPrefix(s, "[LOG]") {
 			out = logHeading
 			_, s = nextWord(s)
