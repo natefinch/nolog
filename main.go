@@ -24,11 +24,9 @@ var (
 	kvNumSP   = termcolor.New(termcolor.FgYellow, termcolor.Bold).SprintFunc()
 	kvSepSP   = termcolor.New(termcolor.FgWhite, termcolor.Bold, termcolor.Italic).SprintFunc()
 	strSP     = termcolor.New(termcolor.FgWhite, termcolor.Bold).SprintFunc()
-)
 
-func logHeading() string {
-	return fmt.Sprintf("%s%s%s", logSqBracketSP("["), logSP("LOG"), logSqBracketSP("]"))
-}
+	logHeading = fmt.Sprintf("%s%s%s", logSqBracketSP("["), logSP("LOG"), logSqBracketSP("]"))
+)
 
 type nologArgs struct {
 	outToFile   bool
@@ -66,16 +64,17 @@ func main() {
 		defer f.Close()
 
 	}
-	testFlags := []string{"test"}
-	if nlArgs.verbose {
+	testFlags := []string{}
+
+	if nlArgs.verbose || nlArgs.gocheck != "" {
 		testFlags = append(testFlags, "-test.v=true")
 	}
+
 	if nlArgs.gocheck != "" {
-		testFlags = append(testFlags, "-test.v=true")
-		// FIXME (perrito666) This is not working as expected, perhaps quoting
-		testFlags = append(testFlags, fmt.Sprintf("-gocheck.f=%q", nlArgs.gocheck))
+		testFlags = append(testFlags, fmt.Sprintf("-gocheck.f=%s", nlArgs.gocheck))
 	}
-	args = append(testFlags, args...)
+	args = append([]string{"test"}, args...)
+	args = append(args, testFlags...)
 	if len(args) == 1 {
 		args = append(args, "./...")
 	}
@@ -169,9 +168,10 @@ func colorizeOut(c chan string, wg *sync.WaitGroup) {
 		// in a log line: timestamp, loglevel and package
 		// [LOG] 0:00.003 INFO a.package
 		if strings.HasPrefix(s, "[LOG]") {
-			out = logHeading()
+			out = logHeading
 			s = s[5:]
 		}
+
 		out += tokenize(s)
 		fmt.Println(out)
 	}
