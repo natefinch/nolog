@@ -24,8 +24,16 @@ var (
 	kvNumSP   = termcolor.New(termcolor.FgYellow, termcolor.Bold).SprintFunc()
 	kvSepSP   = termcolor.New(termcolor.FgWhite, termcolor.Bold, termcolor.Italic).SprintFunc()
 	strSP     = termcolor.New(termcolor.FgWhite, termcolor.Bold).SprintFunc()
+	dateSP    = termcolor.New(termcolor.FgRed, termcolor.Italic).SprintFunc()
+	packSP    = termcolor.New(termcolor.FgWhite, termcolor.Italic, termcolor.Bold).SprintFunc()
+	escapeSP  = termcolor.New(termcolor.FgCyan, termcolor.Bold).SprintFunc()
+	escapedSP = termcolor.New(termcolor.FgMagenta, termcolor.Bold).SprintFunc()
 
 	logHeading = fmt.Sprintf("%s%s%s", logSqBracketSP("["), logSP("LOG"), logSqBracketSP("]"))
+	debugL     = termcolor.CyanString("DEBUG")
+	errorL     = termcolor.RedString("ERROR")
+	infoL      = termcolor.GreenString("INFO")
+	warnL      = termcolor.MagentaString("WARN")
 )
 
 type nologArgs struct {
@@ -112,12 +120,18 @@ func main() {
 }
 
 func tokenize(s string) string {
-	tokenized := []string{}
+	tokenized := []string{" "}
 	bracketCount := 0
 	inStr := false
+	escaped := false
 	for k, _ := range s {
 		// TODO (perrito666) make this more rune friendly
 		c := s[k : k+1] // This will break a lot with unicode chars
+		if escaped {
+			escaped = false
+			tokenized = append(tokenized, escapedSP(c))
+			continue
+		}
 		switch c {
 		case "{":
 			bracketCount += 1
@@ -125,6 +139,9 @@ func tokenize(s string) string {
 		case "}":
 			bracketCount -= 1
 			tokenized = append(tokenized, bracketSP(c))
+		case "\\":
+			escaped = true
+			tokenized = append(tokenized, escapeSP(c))
 		case "\"":
 			inStr = !inStr
 			tokenized = append(tokenized, quoteSP(c))
@@ -156,6 +173,40 @@ func tokenize(s string) string {
 	return strings.Join(tokenized, "")
 }
 
+func nextWord(s string) (string, string) {
+	s = strings.TrimLeft(s, " ")
+	words := strings.SplitN(s, " ", 2)
+	return words[0], words[1]
+}
+
+func extractDateInto(s, out string) (string, string) {
+	date, s := nextWord(s)
+	out = fmt.Sprintf("%s %s", out, dateSP(date))
+	return out, s
+}
+
+func extractLogLevel(s, out string) (string, string) {
+	logLevel, s := nextWord(s)
+	switch {
+	case strings.HasPrefix(logLevel, "DEBUG"):
+		logLevel = debugL
+	case strings.HasPrefix(logLevel, "ERROR"):
+		logLevel = errorL
+	case strings.HasPrefix(logLevel, "INFO"):
+		logLevel = infoL
+	case strings.HasPrefix(logLevel, "WARN"):
+		logLevel = warnL
+	}
+	out = fmt.Sprintf("%s %s", out, logLevel)
+	return out, s
+}
+
+func extractPackage(s, out string) (string, string) {
+	pack, s := nextWord(s)
+	out = fmt.Sprintf("%s %s", out, packSP(pack))
+	return out, s
+}
+
 func colorizeOut(c chan string, wg *sync.WaitGroup) {
 	for {
 		s, ok := <-c
@@ -169,9 +220,11 @@ func colorizeOut(c chan string, wg *sync.WaitGroup) {
 		// [LOG] 0:00.003 INFO a.package
 		if strings.HasPrefix(s, "[LOG]") {
 			out = logHeading
-			s = s[5:]
+			_, s = nextWord(s)
+			out, s = extractDateInto(s, out)
+			out, s = extractLogLevel(s, out)
+			out, s = extractPackage(s, out)
 		}
-
 		out += tokenize(s)
 		fmt.Println(out)
 	}
